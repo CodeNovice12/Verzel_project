@@ -1,7 +1,20 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
-app = FastAPI(title="Verzel Project API", version="0.1.0")
+from app.core.database import engine
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+    print("✅ Conexão com o banco validada")
+    yield
+
+
+app = FastAPI(title="Verzel Project API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
