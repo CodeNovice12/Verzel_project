@@ -28,3 +28,8 @@ class ReservationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaymentResult(BaseModel):
+    reservation_id: uuid.UUID
+    status: ReservationStatus
+    message: str

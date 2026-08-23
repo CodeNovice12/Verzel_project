@@ -1,4 +1,5 @@
 import uuid
+import random
 from fastapi import HTTPException, status
 
 from app.domains.auth.models import User
@@ -83,3 +84,29 @@ class ReservationService:
             status=ReservationStatus.PENDING,
         )
         return await self.reservation_repo.create(reservation)
+    async def process_payment(self, reservation_id: uuid.UUID, customer: User) -> Reservation:
+        reservation = await self.reservation_repo.get_by_id(reservation_id)
+        if reservation is None:
+            raise HTTPException(status_code=404, detail="Reserva não encontrada")
+        if reservation.customer_id != customer.id:
+            raise HTTPException(status_code=403, detail="Essa reserva não é sua")
+        if reservation.status != ReservationStatus.PENDING:
+            raise HTTPException(
+                status_code=409, detail=f"Reserva já está com status '{reservation.status.value}'"
+            )
+
+        # Simulação: 85% de chance de aprovação
+        approved = random.random() < 0.85
+
+        reservation.status = (
+            ReservationStatus.CONFIRMED if approved else ReservationStatus.CANCELLED
+        )
+        await self.reservation_repo.update_status(reservation)
+
+        if not approved and reservation.seat_id:
+            # libera o assento de volta pra disponível se o pagamento falhar
+            seat = await self.seat_repo.get_by_id_for_update(reservation.seat_id)
+            if seat:
+                await self.seat_repo.update_status(seat, SeatStatus.AVAILABLE)
+
+        return reservation

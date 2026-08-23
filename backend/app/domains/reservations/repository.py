@@ -48,3 +48,6 @@ class ReservationRepository:
             select(Reservation).where(Reservation.id == reservation_id)
         )
         return result.scalar_one_or_none()
+    async def update_status(self, reservation: Reservation) -> None:
+        await self.db.commit()
+        await self.db.refresh(reservation)
