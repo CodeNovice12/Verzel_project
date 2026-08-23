@@ -12,3 +12,12 @@ class TicketOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TicketValidationRequest(BaseModel):
+    code: str  # o qr_signature completo, vindo da câmera ou digitado manualmente
+    session_id: uuid.UUID  # a sessão que a portaria está validando (contexto do evento na entrada)
+
+
+class TicketValidationResult(BaseModel):
+    result: str  # "valid" | "invalid" | "already_used" | "wrong_event"
+    message: str

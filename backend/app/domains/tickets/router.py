@@ -9,6 +9,9 @@ from app.domains.tickets.schemas import TicketOut
 from app.domains.tickets.service import TicketService
 from app.domains.reservations.repository import ReservationRepository
 from app.domains.events.repository import SessionRepository
+from app.domains.tickets.schemas import TicketValidationRequest, TicketValidationResult
+from app.domains.auth.dependencies import require_role
+from app.domains.auth.models import UserRole
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -27,3 +30,11 @@ async def my_tickets(
     service: TicketService = Depends(get_ticket_service),
 ):
     return await service.list_my_tickets(current_user.id)
+
+@router.post("/validate", response_model=TicketValidationResult)
+async def validate_ticket(
+    data: TicketValidationRequest,
+    current_user: User = Depends(require_role(UserRole.GATE)),
+    service: TicketService = Depends(get_ticket_service),
+):
+    return await service.validate_at_gate(data.code, data.session_id)

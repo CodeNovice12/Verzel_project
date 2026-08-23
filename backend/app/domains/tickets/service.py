@@ -7,6 +7,8 @@ from app.domains.tickets.security import sign_ticket_payload
 from app.domains.reservations.repository import ReservationRepository
 from app.domains.reservations.models import ReservationStatus
 from app.domains.events.repository import SessionRepository
+from app.domains.tickets.security import decode_ticket_payload
+from app.domains.tickets.schemas import TicketValidationResult
 
 
 class TicketService:
@@ -46,3 +48,26 @@ class TicketService:
 
     async def list_my_tickets(self, customer_id: uuid.UUID) -> list[Ticket]:
         return await self.ticket_repo.list_by_customer(customer_id)
+    
+    async def validate_at_gate(self, code: str, session_id: uuid.UUID) -> TicketValidationResult:
+        try:
+            payload = decode_ticket_payload(code)
+        except ValueError:
+            return TicketValidationResult(result="invalid", message="QR inválido, corrompido ou forjado")
+
+        ticket_id = uuid.UUID(payload["ticket_id"])
+        ticket = await self.ticket_repo.get_by_id(ticket_id)
+
+        if ticket is None:
+            return TicketValidationResult(result="invalid", message="Ingresso não encontrado")
+
+        if str(session_id) != payload["session_id"]:
+            return TicketValidationResult(result="wrong_event", message="Ingresso não é desta sessão/evento")
+
+        if ticket.status == TicketStatus.USED:
+            return TicketValidationResult(result="already_used", message="Ingresso já foi utilizado")
+
+        ticket.status = TicketStatus.USED
+        await self.ticket_repo.persist(ticket)
+
+        return TicketValidationResult(result="valid", message="Ingresso válido! Entrada liberada")
