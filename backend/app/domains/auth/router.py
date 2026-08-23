@@ -8,6 +8,7 @@ from app.domains.auth.schemas import UserCreate, UserOut, Token
 from app.domains.auth.service import AuthService
 
 from app.domains.auth.dependencies import get_current_user
+from app.domains.auth.models import User
 
 # ... resto do arquivo
 

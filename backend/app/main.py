@@ -6,6 +6,7 @@ from sqlalchemy import text
 from app.core.database import engine
 from app.core import models_registry  # noqa
 from app.domains.auth.router import router as auth_router
+from app.domains.events.router import router as events_router
 
 
 @asynccontextmanager
@@ -27,6 +28,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(events_router)
 
 
 @app.get("/health")
