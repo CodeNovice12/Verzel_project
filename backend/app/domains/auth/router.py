@@ -7,6 +7,10 @@ from app.domains.auth.repository import UserRepository
 from app.domains.auth.schemas import UserCreate, UserOut, Token
 from app.domains.auth.service import AuthService
 
+from app.domains.auth.dependencies import get_current_user
+
+# ... resto do arquivo
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -26,3 +30,7 @@ async def login(
 ):
     token = await service.authenticate(form_data.username, form_data.password)
     return Token(access_token=token)
+
+@router.get("/me", response_model=UserOut)
+async def me(current_user: User = Depends(get_current_user)):
+    return current_user
