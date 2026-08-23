@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from app.core.database import engine
 
+from app.core import models_registry  # noqa
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
