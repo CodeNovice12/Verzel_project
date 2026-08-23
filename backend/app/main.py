@@ -4,8 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.core.database import engine
-
 from app.core import models_registry  # noqa
+from app.domains.auth.router import router as auth_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +25,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/health")
