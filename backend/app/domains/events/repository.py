@@ -34,6 +34,12 @@ class SessionRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_by_id(self, session_id: uuid.UUID) -> Session | None:
+        result = await self.db.execute(
+            select(Session).where(Session.id == session_id)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, session: Session) -> Session:
         self.db.add(session)
         await self.db.commit()
