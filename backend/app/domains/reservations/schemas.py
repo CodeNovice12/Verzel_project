@@ -33,3 +33,4 @@ class PaymentResult(BaseModel):
     reservation_id: uuid.UUID
     status: ReservationStatus
     message: str
+    ticket_id: uuid.UUID | None = None

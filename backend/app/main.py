@@ -8,6 +8,7 @@ from app.core import models_registry  # noqa
 from app.domains.auth.router import router as auth_router
 from app.domains.events.router import router as events_router
 from app.domains.reservations.router import router as reservations_router
+from app.domains.tickets.router import router as tickets_router
 
 
 @asynccontextmanager
@@ -31,6 +32,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(events_router)
 app.include_router(reservations_router)
+app.include_router(tickets_router)
 
 
 @app.get("/health")
