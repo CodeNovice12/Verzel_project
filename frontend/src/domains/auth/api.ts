@@ -34,3 +34,11 @@ export async function registerRequest(
   }
   return res.json();
 }
+
+export async function fetchCurrentUser(token: string) {
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Erro ao validar usuário");
+  return res.json();
+}
