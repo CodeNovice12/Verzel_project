@@ -10,8 +10,6 @@ class SeatRepository:
         self.db = db
 
     async def get_by_id_for_update(self, seat_id: uuid.UUID) -> Seat | None:
-        # with_for_update: trava a linha no banco até o fim da transação —
-        # ninguém mais consegue ler/alterar esse assento até essa transação terminar
         result = await self.db.execute(
             select(Seat).where(Seat.id == seat_id).with_for_update()
         )
@@ -20,6 +18,12 @@ class SeatRepository:
     async def update_status(self, seat: Seat, status: SeatStatus) -> None:
         seat.status = status
         await self.db.commit()
+
+    async def list_by_session(self, session_id: uuid.UUID) -> list[Seat]:
+        result = await self.db.execute(
+            select(Seat).where(Seat.session_id == session_id).order_by(Seat.code)
+        )
+        return list(result.scalars().all())
 
 
 class ReservationRepository:
@@ -48,6 +52,7 @@ class ReservationRepository:
             select(Reservation).where(Reservation.id == reservation_id)
         )
         return result.scalar_one_or_none()
+
     async def update_status(self, reservation: Reservation) -> None:
         await self.db.commit()
         await self.db.refresh(reservation)

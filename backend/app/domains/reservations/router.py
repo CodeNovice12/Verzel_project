@@ -11,6 +11,8 @@ from app.domains.reservations.repository import SeatRepository, ReservationRepos
 from app.domains.reservations.service import ReservationService
 from app.domains.tickets.repository import TicketRepository
 from app.domains.tickets.service import TicketService
+from app.domains.reservations.schemas import SeatOut
+from app.domains.reservations.repository import SeatRepository as _SeatRepo
 
 router = APIRouter(prefix="/reservations", tags=["reservations"])
 
@@ -65,3 +67,9 @@ async def pay_reservation(
         message=message,
         ticket_id=ticket_id,
     )
+@router.get("/sessions/{session_id}/seats", response_model=list[SeatOut])
+async def list_seats(
+    session_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    return await SeatRepository(db).list_by_session(session_id)

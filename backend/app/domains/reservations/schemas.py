@@ -1,6 +1,8 @@
 import uuid
 from pydantic import BaseModel, model_validator
 
+from app.domains.reservations.models import ReservationStatus, SeatStatus
+
 from app.domains.reservations.models import ReservationStatus
 
 
@@ -34,3 +36,10 @@ class PaymentResult(BaseModel):
     status: ReservationStatus
     message: str
     ticket_id: uuid.UUID | None = None
+class SeatOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    status: SeatStatus
+
+    class Config:
+        from_attributes = True
