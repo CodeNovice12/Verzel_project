@@ -1,47 +1,53 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, Lock, Loader2, Ticket, AlertCircle } from "lucide-react";
-import { loginRequest, fetchCurrentUser } from "./api";
-import { useAuth } from "./AuthContext";
+import { User, Mail, Lock, Loader2, Ticket, CheckCircle2, AlertCircle } from "lucide-react";
+import { registerRequest } from "./api";
 
-const roleLabels: Record<string, string> = {
-  organizer: "Organizador",
-  customer: "Cliente",
-  gate: "Portaria",
-};
-
-export function LoginPage() {
+export function RegisterPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const expectedRole = searchParams.get("role");
+
+  const role = searchParams.get("role") || "customer";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
     setError("");
+    setMessage("");
+
+    if (password !== confirmPassword) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("A senha deve possuir pelo menos 6 caracteres.");
+      return;
+    }
+
     setIsSubmitting(true);
+
     try {
-      const token = await loginRequest(email, password);
+      await registerRequest(name, email, password, role);
 
-      if (expectedRole) {
-        const user = await fetchCurrentUser(token);
-        if (user.role !== expectedRole) {
-          setError(
-            `Essa conta é de ${roleLabels[user.role]}, não de ${roleLabels[expectedRole]}. Volte e escolha o papel certo.`
-          );
-          setIsSubmitting(false);
-          return;
-        }
-      }
+      setMessage("Cadastro realizado com sucesso! Redirecionando...");
 
-      await login(token);
-      navigate("/");
+      setTimeout(() => {
+        navigate(`/login?role=${role}`);
+      }, 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao entrar");
+      setError(
+        err instanceof Error ? err.message : "Erro ao realizar cadastro"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -57,9 +63,9 @@ export function LoginPage() {
         </div>
         <div>
           <blockquote className="text-xl font-medium leading-relaxed mb-4">
-            "Acesse seu painel com facilidade e gerencie seus eventos com total controle."
+            "Gerencie seus ingressos, acesse eventos e acompanhe suas portarias em um único lugar."
           </blockquote>
-          <p className="text-sm text-slate-400">Autenticação Segura</p>
+          <p className="text-sm text-slate-400">Sistema Integrado de Gestão de Eventos</p>
         </div>
         <div className="text-xs text-slate-500">
           © {new Date().getFullYear()} Verzel. Todos os direitos reservados.
@@ -70,15 +76,29 @@ export function LoginPage() {
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Entrar {expectedRole && <span className="text-indigo-600">como {roleLabels[expectedRole]}</span>}
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Criar conta</h1>
             <p className="text-slate-500 text-sm mt-2">
-              Digite seu e-mail e senha para acessar sua conta.
+              Cadastre-se como <span className="font-semibold text-slate-700">{role === "customer" ? "cliente" : role}</span> para ter acesso à plataforma.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Nome */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Nome completo</label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="Seu nome"
+                  className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                />
+              </div>
+            </div>
+
             {/* E-mail */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
@@ -105,17 +125,40 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  placeholder="Mínimo de 6 caracteres"
                   className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                 />
               </div>
             </div>
 
-            {/* Alerta de Erro */}
+            {/* Confirmar Senha */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar senha</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="Digite a senha novamente"
+                  className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Alertas */}
             {error && (
               <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {message && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-600 border border-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>{message}</span>
               </div>
             )}
 
@@ -128,22 +171,20 @@ export function LoginPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Entrando...
+                  Criando conta...
                 </>
               ) : (
-                "Entrar"
+                "Criar conta"
               )}
             </button>
           </form>
 
-          {expectedRole === "customer" && (
-            <p className="text-center text-sm text-slate-600">
-              Ainda não possui uma conta?{" "}
-              <Link to="/register?role=customer" className="font-semibold text-indigo-600 hover:text-indigo-500">
-                Criar conta
-              </Link>
-            </p>
-          )}
+          <p className="text-center text-sm text-slate-600">
+            Já possui uma conta?{" "}
+            <Link to={`/login?role=${role}`} className="font-semibold text-indigo-600 hover:text-indigo-500">
+              Entrar
+            </Link>
+          </p>
         </div>
       </div>
     </div>
