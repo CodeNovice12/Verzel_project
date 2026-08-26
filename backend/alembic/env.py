@@ -48,11 +48,14 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    """Cria a engine assíncrona e executa o loop de migração."""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "timeout": 30,
+            "ssl": "require"
+        },
     )
 
     async with connectable.connect() as connection:
@@ -70,3 +73,4 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+
