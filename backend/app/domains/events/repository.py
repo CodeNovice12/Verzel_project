@@ -40,6 +40,13 @@ class SessionRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_id_for_update(self, session_id: uuid.UUID) -> Session | None:
+        """Busca a sessão travando a linha no banco (SELECT ... FOR UPDATE) para evitar race condition."""
+        result = await self.db.execute(
+            select(Session).where(Session.id == session_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, session: Session) -> Session:
         self.db.add(session)
         await self.db.commit()

@@ -21,28 +21,24 @@ class ReservationService:
         self.reservation_repo = reservation_repo
         self.session_repo = session_repo
 
-    async def _get_session(self, session_id: uuid.UUID) -> Session:
-        session = await self.session_repo.get_by_id(session_id)
-        if session is None:
-            raise HTTPException(status_code=404, detail="Sessão não encontrada")
-        return session
-
     async def create_reservation(
         self, data: ReservationCreate, customer: User
     ) -> Reservation:
-        session = await self._get_session(data.session_id)
-
-        if session.mode == SessionMode.SEAT_MAP:
-            if data.seat_id is None:
-                raise HTTPException(
-                    status_code=400, detail="Esta sessão exige seat_id (mapa de assentos)"
-                )
+        if data.seat_id:
+            # No modo assento, busca a sessão normal
+            session = await self.session_repo.get_by_id(data.session_id)
+            if session is None:
+                raise HTTPException(status_code=404, detail="Sessão não encontrada")
             return await self._reserve_seat(session, data.seat_id, customer)
 
-        else:  # SessionMode.QUANTITY
-            if data.quantity is None:
+        else:
+            # No modo pista, busca a sessão com LOCK PESSIMISTA para serializar vendas concorrentes
+            session = await self.session_repo.get_by_id_for_update(data.session_id)
+            if session is None:
+                raise HTTPException(status_code=404, detail="Sessão não encontrada")
+            if data.quantity is None or data.quantity <= 0:
                 raise HTTPException(
-                    status_code=400, detail="Esta sessão exige quantity (modo pista)"
+                    status_code=400, detail="Esta sessão exige uma quantidade válida"
                 )
             return await self._reserve_quantity(session, data.quantity, customer)
 
@@ -62,15 +58,15 @@ class ReservationService:
             status=ReservationStatus.PENDING,
         )
         reservation = await self.reservation_repo.create(reservation)
-
         await self.seat_repo.update_status(seat, SeatStatus.RESERVED)
-
         return reservation
 
     async def _reserve_quantity(
         self, session: Session, quantity: int, customer: User
     ) -> Reservation:
-        already_reserved = await self.reservation_repo.count_confirmed_by_session(session.id)
+        # A sessão está travada via FOR UPDATE. Nenhuma outra requisição calcula a contagem em paralelo.
+        already_reserved = await self.reservation_repo.count_active_by_session(session.id)
+        
         if already_reserved + quantity > session.capacity:
             raise HTTPException(
                 status_code=409,
@@ -84,6 +80,7 @@ class ReservationService:
             status=ReservationStatus.PENDING,
         )
         return await self.reservation_repo.create(reservation)
+
     async def process_payment(self, reservation_id: uuid.UUID, customer: User) -> Reservation:
         reservation = await self.reservation_repo.get_by_id(reservation_id)
         if reservation is None:
@@ -95,7 +92,6 @@ class ReservationService:
                 status_code=409, detail=f"Reserva já está com status '{reservation.status.value}'"
             )
 
-        # Simulação: 85% de chance de aprovação
         approved = random.random() < 0.85
 
         reservation.status = (
@@ -104,7 +100,6 @@ class ReservationService:
         await self.reservation_repo.update_status(reservation)
 
         if not approved and reservation.seat_id:
-            # libera o assento de volta pra disponível se o pagamento falhar
             seat = await self.seat_repo.get_by_id_for_update(reservation.seat_id)
             if seat:
                 await self.seat_repo.update_status(seat, SeatStatus.AVAILABLE)

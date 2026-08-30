@@ -1,8 +1,8 @@
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domains.reservations.models import Seat, Reservation, SeatStatus
+from app.domains.reservations.models import Seat, Reservation, SeatStatus, ReservationStatus
 
 
 class SeatRepository:
@@ -30,13 +30,16 @@ class ReservationRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def count_confirmed_by_session(self, session_id: uuid.UUID) -> int:
-        from sqlalchemy import func
-
+    async def count_active_by_session(self, session_id: uuid.UUID) -> int:
+        """
+        Calcula os lugares ocupados somando apenas reservas CONFIRMADAS 
+        e PENDENTES (que garantem retenção temporária durante o checkout).
+        """
         result = await self.db.execute(
             select(func.coalesce(func.sum(Reservation.quantity), 0)).where(
                 Reservation.session_id == session_id,
                 Reservation.quantity.isnot(None),
+                Reservation.status.in_([ReservationStatus.CONFIRMED, ReservationStatus.PENDING]),
             )
         )
         return result.scalar_one()

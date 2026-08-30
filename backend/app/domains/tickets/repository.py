@@ -17,13 +17,19 @@ class TicketRepository:
         return ticket
 
     async def persist(self, ticket: Ticket) -> Ticket:
-        # usado depois de mudar um atributo (assinatura, status) num ticket já existente
         await self.db.commit()
         await self.db.refresh(ticket)
         return ticket
 
     async def get_by_id(self, ticket_id: uuid.UUID) -> Ticket | None:
         result = await self.db.execute(select(Ticket).where(Ticket.id == ticket_id))
+        return result.scalar_one_or_none()
+
+    async def get_by_id_for_update(self, ticket_id: uuid.UUID) -> Ticket | None:
+        """Trava o ticket no banco para garantir que dois scans simultâneos não passem juntos."""
+        result = await self.db.execute(
+            select(Ticket).where(Ticket.id == ticket_id).with_for_update()
+        )
         return result.scalar_one_or_none()
 
     async def get_by_reservation_id(self, reservation_id: uuid.UUID) -> Ticket | None:
